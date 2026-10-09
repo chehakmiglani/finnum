@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+# Real downloaded data and private portfolio stay local
+data/raw/
+data/private/
+results/*
+!results/.gitkeep
+# regenerable artefacts
+data/benchmark/
+data/sample/*.csv

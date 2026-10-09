@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "finnum"
+version = "0.3.0"
+description = "FinNum: benchmarking number encodings for LLMs on real Indian market data"
+requires-python = ">=3.10"
+dependencies = ["pandas>=2.0", "numpy>=1.24", "requests>=2.31"]
+
+[project.optional-dependencies]
+audit = ["tiktoken>=0.7", "tokenizers>=0.19", "transformers>=4.44"]
+train = ["torch>=2.2", "transformers>=4.44", "peft>=0.12", "accelerate>=0.33"]
+fallback = ["yfinance>=0.2.40"]
+dev = ["pytest>=8"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
