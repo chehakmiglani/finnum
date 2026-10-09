@@ -7,7 +7,8 @@ import pytest
 from finnum.benchmark import Generator
 from finnum.data import make_sample
 from finnum.numbers import find_numbers
-from finnum.retrofit.features import (FEATURE_DIMS, bit_features, decode_fone, features, fone_features)
+from finnum.retrofit.features import (FEATURE_DIMS, bit_features, decode_fone, features, fone_features,
+                                      grouping_of)
 from finnum.retrofit.preprocess import METHODS, NUM_TOKEN, answer_text, encode, feature_dim, mark, quantities
 
 
@@ -44,11 +45,19 @@ def test_bits_are_exact_and_signed():
     assert packed == 2915.35
 
 
+@pytest.mark.parametrize("text,g", [("1,23,45,678", "indian"), ("12,345,678", "intl"), ("12345", "none"),
+                                    ("₹1,234.50", "intl"), ("12,34,567.00", "indian")])
+def test_grouping(text, g):
+    assert grouping_of(text) == g
+
+
 def test_feature_shapes_all_kinds():
     nums = find_numbers("₹12.35 crore, -3.45% and 1,23,45,678")
     for kind, dim in FEATURE_DIMS.items():
         f = features(nums, kind)
         assert f.shape == (3, dim) and f.dtype == np.float32 and np.isfinite(f).all()
+    u = features(nums, "units")
+    assert u[0, 0] == 0 and u[0, 1] == 1 and u[1, 0] == 1  # currency on first, percent on second
 
 
 def test_dates_are_not_quantities():

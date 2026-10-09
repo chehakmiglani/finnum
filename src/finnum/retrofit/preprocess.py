@@ -7,6 +7,7 @@ Methods
   fone          each number REPLACED by one <num> token with Fourier digit features
   bittokens     each number REPLACED by one <num> token with float64 bit features
   value_prefix  a <num> token (fone features) is INSERTED BEFORE the number, digits are kept
+  fone_units    ours: REPLACED, fone + how-it-was-written features (₹, %, lakh/crore, grouping)
 
 Dates (YYYY-MM-DD) are left as text: they are identifiers here, not quantities.
 """
@@ -30,6 +31,7 @@ METHODS: dict[str, dict] = {
     "fone": {"mode": "replace", "features": "fone"},
     "bittokens": {"mode": "replace", "features": "bits"},
     "value_prefix": {"mode": "prefix", "features": "fone"},
+    "fone_units": {"mode": "replace", "features": "fone_units"},
 }
 
 _DATE = re.compile(r"\d{4}-\d{2}-\d{2}")

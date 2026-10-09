@@ -9,14 +9,44 @@ trainable network (encoders.py) maps that vector into the LLM's embedding space.
   fone        29 dims cos/sin of x on periods 10^-1 .. 10^12 (one pair per digit position, FoNE,
                       Zhou et al. ICLR 2026) + sign. Digit-exact: each pair encodes one digit.
   bits        64 dims IEEE-754 float64 bit pattern as +-1 (BitTokens, Kreitner et al. 2025)
+  units       14 dims how the number was WRITTEN: percent, currency, scale word, digit grouping,
+                      sign, magnitude, decimals  (our addition, week 6)
+  fone_units  43 dims fone + units (our method)
 """
 from __future__ import annotations
+
+import re
 
 import numpy as np
 
 from finnum.numbers.formats import ParsedNumber
 
 FOURIER_PERIODS = np.array([10.0 ** k for k in range(-1, 13)])  # 0.1 .. 10^12 -> hundredths .. 10^12 digit
+SCALE_WORDS = ["none", "thousand", "lakh", "crore", "million", "billion"]
+_SCALE_OF = {"k": "thousand", "thousand": "thousand", "l": "lakh", "lakh": "lakh", "lakhs": "lakh",
+             "lac": "lakh", "lacs": "lakh", "cr": "crore", "crore": "crore", "crores": "crore",
+             "m": "million", "mn": "million", "million": "million", "b": "billion", "bn": "billion",
+             "billion": "billion"}
+GROUPINGS = ["none", "intl", "indian"]
+_DIGITS_PART = re.compile(r"\d[\d,]*(?:\.\d+)?|\.\d+")
+
+
+def grouping_of(text: str) -> str:
+    m = _DIGITS_PART.search(text)
+    digits = m.group(0) if m else ""
+    int_part = digits.split(".")[0]
+    if "," not in int_part:
+        return "none"
+    groups = int_part.split(",")[1:]
+    # any 2-digit group means lakh/crore grouping; "12,345" alone is ambiguous -> intl
+    return "indian" if any(len(g) == 2 for g in groups) else "intl"
+
+
+def decimals_of(text: str) -> int:
+    m = _DIGITS_PART.search(text)
+    return len(m.group(0).split(".")[1]) if m and "." in m.group(0) else 0
+
+
 def xval_features(values: np.ndarray) -> np.ndarray:
     v = np.asarray(values, dtype=np.float64)
     return (np.sign(v) * np.log10(1 + np.abs(v)) / 12.0)[:, None]
@@ -36,7 +66,21 @@ def bit_features(values: np.ndarray) -> np.ndarray:
     return bits.astype(np.float64) * 2 - 1
 
 
-FEATURE_DIMS = {"xval": 1, "fone": 2 * len(FOURIER_PERIODS) + 1, "bits": 64}
+def unit_features(nums: list[ParsedNumber]) -> np.ndarray:
+    rows = []
+    for n in nums:
+        scale = _SCALE_OF.get(n.unit or "", "none")
+        g = grouping_of(n.text)
+        rows.append([float(n.is_percent), float(n.currency is not None)]
+                    + [float(scale == s) for s in SCALE_WORDS]
+                    + [float(g == x) for x in GROUPINGS]
+                    + [float(np.sign(n.value)), float(np.log10(1 + abs(n.value)) / 12.0),
+                       decimals_of(n.text) / 4.0])
+    return np.asarray(rows, dtype=np.float64).reshape(len(nums), 14)
+
+
+FEATURE_DIMS = {"xval": 1, "fone": 2 * len(FOURIER_PERIODS) + 1, "bits": 64, "units": 14,
+                "fone_units": 2 * len(FOURIER_PERIODS) + 1 + 14}
 
 
 def features(nums: list[ParsedNumber], kind: str) -> np.ndarray:
@@ -47,6 +91,10 @@ def features(nums: list[ParsedNumber], kind: str) -> np.ndarray:
         out = fone_features(values)
     elif kind == "bits":
         out = bit_features(values)
+    elif kind == "units":
+        out = unit_features(nums)
+    elif kind == "fone_units":
+        out = np.concatenate([fone_features(values), unit_features(nums)], axis=1)
     else:
         raise ValueError(f"unknown feature kind {kind!r}")
     out = out.reshape(len(nums), FEATURE_DIMS[kind])
