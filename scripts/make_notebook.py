@@ -45,7 +45,7 @@ MODELS = [
     # "meta-llama/Llama-3.2-3B-Instruct",  # gated: accept the licence on Hugging Face and set HF_TOKEN
 ]
 BATCH_SIZE = 16     # lower to 8 if you see "CUDA out of memory"
-SAVE_TO_DRIVE = False   # True = keep results in Google Drive (asks for Drive access)
+SAVE_TO_DRIVE = True    # keeps results across disconnects; the week 7 notebook reads them from Drive
 HF_TOKEN = None     # only needed for gated models
 """))
 

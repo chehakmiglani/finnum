@@ -48,7 +48,7 @@ BATCH_SIZE = 256
 MODEL = dict(n_layer=4, n_head=4, n_embd=256)   # ~3M parameters
 REVERSE_ANSWERS = False   # ablation: write add/sub answers lowest digit first (the order carries flow)
 
-SAVE_TO_DRIVE = False     # True keeps results in Google Drive (asks for Drive access)
+SAVE_TO_DRIVE = True      # keeps results across disconnects; the week 7 notebook reads them from Drive
 
 if QUICK_TEST:
     SEEDS, N_TRAIN_PER_TASK, N_TEST_PER_TASK, STEPS = [0], 5_000, 200, 300
