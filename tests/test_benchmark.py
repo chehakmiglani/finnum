@@ -102,3 +102,28 @@ def test_differs_from_plain_flag(variants):
     # small-number tables (e.g. mean of a sub-1000 price) render identically in every style
     assert any(not v.differs_from_plain for v in variants)
     assert any(v.differs_from_plain and v.style != "plain" for v in variants)
+
+
+@pytest.mark.parametrize("text,expected", [
+    ("46.39\n\nHere's the calculation:\n\n(47.38 + 46.10", 46.39),       # answer first, then working
+    ("To calculate the percentage change of SUZLON from 2024-12-", None),  # cut off: never read the date
+    ("We compute (2,915.35 - 2,800)/2,800 = 0.0412. The answer is 4.12%.", 4.12),
+    ("**-2.35%**", -2.35),
+    ("On 2024-12-03 the close was 2,915.35", 2915.35),
+])
+def test_extract_number_rules(text, expected):
+    assert extract_answer(text, "number") == expected
+
+
+def test_rescore_adds_lenient_column():
+    import pandas as pd
+    from finnum.benchmark.scoring import rescore
+    df = pd.DataFrame([
+        {"task": "mean", "output": "46.39\n\nworking: 47.38", "pred": 47.38, "gold": 46.4, "correct": False},
+        {"task": "mean", "output": "46.80", "pred": 46.8, "gold": 46.4, "correct": False},
+        {"task": "pct_change", "output": "-1.30%", "pred": -1.3, "gold": -0.96, "correct": False},
+        {"task": "compare", "output": "INFY", "pred": "INFY", "gold": "INFY", "correct": True},
+    ])
+    out = rescore(df)
+    assert list(out["correct"]) == [True, False, False, True]
+    assert list(out["correct_approx"]) == [True, True, True, True]

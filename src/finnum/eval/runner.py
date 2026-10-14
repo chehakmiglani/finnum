@@ -121,9 +121,16 @@ def run_eval(items: list[dict], generate_fn: GenerateFn, model_name: str, out_pa
     return load_predictions(out_path)
 
 
-def load_predictions(*paths: str | Path) -> pd.DataFrame:
+def load_predictions(*paths: str | Path, rescore_numbers: bool = True) -> pd.DataFrame:
+    """Load scored predictions. By default number answers are re-scored from the raw output with the
+    current extraction rules, so files written by older versions are scored consistently; this also
+    adds ``correct_approx`` (lenient tolerance)."""
     rows = []
     for p in paths:
         with Path(p).open(encoding="utf-8") as fh:
             rows.extend(json.loads(line) for line in fh if line.strip())
-    return pd.DataFrame(rows)
+    df = pd.DataFrame(rows)
+    if rescore_numbers and {"output", "task", "gold", "correct"} <= set(df.columns):
+        from finnum.benchmark.scoring import rescore
+        df = rescore(df)
+    return df
